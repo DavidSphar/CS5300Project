@@ -1,0 +1,13 @@
+var x : char;
+
+function simpleRef(ref a:char) : char;
+BEGIN
+    a := chr(succ(ord(a)));
+    return a;
+END;
+
+BEGIN
+  x := 'g';
+  write(x, '\n');
+  write(simpleRef(x), '\n');
+END.

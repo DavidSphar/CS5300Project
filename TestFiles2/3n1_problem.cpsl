@@ -1,0 +1,33 @@
+var 
+	i, j, x, y, c, max, n: integer;
+begin
+	write("Enter i: ");
+	read(i);
+
+	write("Enter j: ");
+	read(j);
+	
+	x := i;
+	y := j;
+
+	max := 0;
+
+	while (x <= y) do
+		n := x;
+		c := 1;
+		while (n<>1) do
+			if (n%2=1) then 
+				n := 3*n+1;
+			else 
+				n := n/2;
+			end;
+			c := succ(c);
+		end;
+		if (c > max) then
+			max := c;
+		end;
+		x := succ(x);
+	end; 
+
+	write(i, ' ', j, ' ', max, '\n');
+end.

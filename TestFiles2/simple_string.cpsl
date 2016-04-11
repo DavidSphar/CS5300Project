@@ -1,0 +1,22 @@
+var 
+	i, j: integer;
+	x, y: string;
+begin
+	write("Enter i: ");
+	read(i);
+
+	write("Enter j: ");
+	read(j);
+
+	if (i < j) then
+		x := "i < j";
+	elseif (i = j)  then
+		x := "i = j";
+	else
+		x := "i > j";
+	end;
+	y := x;
+
+	write(y);
+
+end.

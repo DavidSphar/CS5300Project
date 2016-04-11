@@ -1,0 +1,15 @@
+var 
+	N, decimal, i, rem, pow: integer;
+begin
+	write("Enter N: ");
+	read(N);
+	pow := 1;
+	while (N<>0) do
+		rem := N%10;
+		N := N/10;
+		decimal := decimal + rem * pow;
+		pow := pow * 2;
+		i := succ(i);
+	end;
+	write(decimal);
+end.

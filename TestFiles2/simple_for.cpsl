@@ -1,0 +1,30 @@
+VAR 
+	x,y,z: integer;
+	
+BEGIN
+	write("Enter x: ");
+	read(x);
+
+	write("Enter y: ");
+	read(y);
+
+	for i:= x to y do
+		write("i -> ",i,"\n");
+	end;
+
+	write("Enter x: ");
+	read(x);
+
+	write("Enter y: ");
+	read(y);
+	
+	write("Enter z: ");
+	read(z);
+
+	for t := x to y do
+		write("t -> ",t,"\n");
+		for v := y downto z do
+			write("v -> ",v,"\n");
+		end;
+	end;
+END.

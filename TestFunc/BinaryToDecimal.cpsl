@@ -1,0 +1,26 @@
+var 
+	N, decimal, rem, i: integer;
+
+function power(var base, exponent: integer): integer;
+var ret : integer;
+begin
+	ret := 1;
+	for i := 1 to exponent do
+		ret := ret * base;
+	end;
+	return ret;
+end;
+
+begin
+	write("Enter N: ");
+	read(N);
+	decimal := 0;
+	i := 0;
+	while (N <> 0) do 
+		rem := N%10;
+		N := N/10;
+		decimal := decimal + rem * power(2, i);
+		i := succ(i);
+	end;
+	write(decimal);
+end.

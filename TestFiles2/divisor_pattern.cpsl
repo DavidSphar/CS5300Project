@@ -1,0 +1,17 @@
+var
+	N: integer;
+begin
+	write("Enter N: ");
+	read(N);
+
+	for i := 1 to N do
+		for j := 1 to N do
+			if ( (i%j=0) | (j%i=0)) then
+				write("* ");
+			else
+				write("  ");
+			end;
+		end;
+		write(i,'\n');
+	end;
+end.

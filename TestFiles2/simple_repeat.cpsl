@@ -1,0 +1,40 @@
+VAR 
+	x,y,z: integer;
+	
+BEGIN
+	write("Enter x: ");
+	read(x);
+
+	write("Enter y: ");
+	read(y);
+
+	repeat
+		write("x > y -> ",x," > ",y,"\n");
+		y := succ(y);
+	until x <= y;
+
+	write("x ",x,"\n");
+	write("y ",y,"\n");
+
+	write("Enter x: ");
+	read(x);
+
+	write("Enter y: ");
+	read(y);
+	
+	write("Enter z: ");
+	read(z);
+
+	repeat
+		write("x > y -> ",x," > ",y,"\n");
+		repeat
+			write("y > z -> ",y," > ",z,"\n");
+			z := succ(z);
+		until y <= z;
+		y := succ(y);
+	until x <= y;
+
+	write("x ",x,"\n");
+	write("y ",y,"\n");
+	write("z ",z,"\n");
+END.

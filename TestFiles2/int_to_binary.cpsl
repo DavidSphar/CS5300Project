@@ -1,0 +1,22 @@
+var
+	N, v: integer;
+begin
+	write("Enter N: ");
+	read(N);
+
+	v := 1;
+	while ( v <= N/2) do
+		v := v * 2;
+	end;
+
+	while ( v > 0) do
+		if (N < v) then
+			write(0);
+		else
+			write(1);
+			N := N-v;
+		end;
+		v := v/2;
+	end;
+
+end.

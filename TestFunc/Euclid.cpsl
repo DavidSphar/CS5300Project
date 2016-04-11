@@ -1,0 +1,33 @@
+var 
+	p, q, d, d2: integer;
+
+function gcd(p, q: integer): integer;
+begin
+	if (q = 0) then
+		return p;
+	else
+		return gcd(q, p % q);
+	end;
+end;
+
+function gcd2(p, q: integer): integer;
+var temp: integer;
+begin
+	while (q <> 0) do
+		temp := q;
+		q := p % q;
+		p := temp;
+	end;
+	return p;
+end;
+
+begin
+	write("Enter the first number: ");
+	read(p);
+	write("Enter the second number: ");
+	read(q);
+	d := gcd(p, q);
+	d2 := gcd2(p, q);
+	write("gcd(" , p , ", " , q , ") = " , d, "\n");
+	write("gcd2(" , p , ", " , q , ") = " , d2, "\n");
+end.

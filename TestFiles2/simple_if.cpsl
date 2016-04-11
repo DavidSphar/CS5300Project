@@ -1,0 +1,49 @@
+VAR 
+	x,y,t: integer;
+	
+BEGIN
+	write("Enter x: ");
+	read(x);
+
+	write("Enter y: ");
+	read(y);
+
+	write("Enter t: ");
+	read(t);
+
+	if x > y then
+		write("x > y\n");
+	end;
+
+	if x > y then
+		write("x > y\n");
+	else
+		write("x <= y\n");
+	end;
+
+	if x > y then
+		write("x > y\n");
+	elseif x < y then
+		write("x < y\n");
+	else
+		write("x = y\n");
+	end;
+
+	if x > y then
+		write("x > y\n");
+		if y < t then
+			write("y < t\n");
+		else
+			write("y >= t\n");
+		end;
+		write("x > y\n");
+	else
+		write("x <= y\n");
+		if x < y then
+			write("x < y\n");
+		else
+			write("x = y\n");
+		end;
+		write("x <= y\n");
+	end;
+END.

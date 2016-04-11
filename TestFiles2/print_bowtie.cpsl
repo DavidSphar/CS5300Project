@@ -1,0 +1,17 @@
+var
+	N: integer;
+begin
+	write("Enter N: ");
+	read(N);
+
+	for i := -N to N do
+		for j := -N to N do
+			if (i*i <= j*j) then
+				write("* ");
+			else
+				write(". ");
+			end;
+		end;
+		write('\n');
+	end;
+end.

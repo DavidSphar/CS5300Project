@@ -1,0 +1,19 @@
+Student: Tam Nguyen
+Email: tamnguyenthe91@gmail.com
+A-number: A02056664
+
+1) Build: 
+	+ Open terminal, change working directory to this directory
+	+ Type "make" to build the program, the name of the compiler is "cpslcompiler"
+2) Run: 
+	+ Run "./cpslcompiler [filename]" to read and compile a cpsl program from file
+3) Output:
+	+ the output MIPS file is "out.asm"
+    + run "java -jar Mars4_5.jar out.asm" to execute the MIPS file   
+    + For incorrect cpsl programs (syntactic and/or semantic), the compiler will print error messages. You should ignore the file "out.asm" file in these cases.
+4) Test programs:
+	+ I have run and tested all cpsl programs in the "TestFiles", "TestFiles2", "TestFunc" folders
+	+ "TestFiles" contains all cpsl programs in class GitHub repository (I removed all programes that have Array and Record)
+	+ "TestFiles2" contains all cpsl programs I have written to test in previous assignments
+	+ "TestFunc" contains all cpsl programs I have written to test functions
+    + All programs executed correctly

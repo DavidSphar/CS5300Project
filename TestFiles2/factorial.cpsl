@@ -1,0 +1,13 @@
+var
+	N, factorial: integer;
+begin
+	write("Enter N: ");
+	read(N);
+
+	factorial := 1;
+
+	for t := 1 to N do
+		factorial := factorial * t;
+	end;
+	write(N, "! = ", factorial);
+end.

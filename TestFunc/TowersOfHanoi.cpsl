@@ -1,0 +1,22 @@
+var 
+	N : integer;
+
+procedure moves(var n: integer; var left: boolean);
+begin
+	if (n = 0) then
+		return;
+	end;
+	moves(n-1, ~left);
+	if (left) then
+		write(n, " left", "\n");
+	else
+		write(n, " right", "\n");
+	end;
+	moves(n-1, ~left);
+end;
+
+begin
+	write("Enter the number: ");
+	read(N);
+	moves(N, true);
+end.

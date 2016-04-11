@@ -1,0 +1,28 @@
+var
+	N: integer;
+	absi, absj: integer;
+begin
+	write("Enter N: ");
+	read(N);
+
+	for i := -N to N do
+		if (i >= 0) then
+			absi := i
+		else
+			absi := -i
+		end;
+		for j := -N to N do
+			if (j >= 0) then
+				absj := j
+			else
+				absj := -j
+			end;
+			if (absi + absj <= N) then
+				write("* ");
+			else
+				write(". ");
+			end;
+		end;
+		write('\n');
+	end;
+end.
