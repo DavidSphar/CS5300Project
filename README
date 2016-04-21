@@ -12,8 +12,11 @@ A-number: A02056664
     + run "java -jar Mars4_5.jar out.asm" to execute the MIPS file   
     + For incorrect cpsl programs (syntactic and/or semantic), the compiler will print error messages. You should ignore the file "out.asm" file in these cases.
 4) Test programs:
-	+ I have run and tested all cpsl programs in the "TestFiles", "TestFiles2", "TestFunc" folders
-	+ "TestFiles" contains all cpsl programs in class GitHub repository (I removed all programes that have Array and Record)
-	+ "TestFiles2" contains all cpsl programs I have written to test in previous assignments
-	+ "TestFunc" contains all cpsl programs I have written to test functions
-    + All programs executed correctly
+	+ I have run and tested all cpsl programs in the "TestFiles" and "MyTestFiles"
+	+ "TestFiles" contains all cpsl programs in CS6300 GitHub repository 
+	+ "MyTestFiles" contains all cpsl programs I have written to test in previous assignments
+    + All programs executed correctly [I tested against results in "Base" folder]
+    + There are some mistakes with the test files:
+    	+ array_ret.cpsl: There is function overloading on file, I do not implement function overloading, I print an error when compiling.
+    	+ func_types.cpsl: In line 16, the CHR is applied to BOOLEAN value, I print an error when compiling. My result still matched against in "Base" folder
+    	+ mix_expressions.cpsl: I define not of an integer is 0 if it not equal to zero, not of zero is 1. Thus ~-5=0 and ~5=0.
