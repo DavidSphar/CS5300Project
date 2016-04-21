@@ -20,9 +20,7 @@ Expression::Expression(std::shared_ptr<Type> type, int value): type(type), value
 
 Expression::Expression(std::shared_ptr<LValue> lvalue): lvalue(lvalue) {
 	reg = Register::allocate();
-	type = lvalue->getType();
-	auto refType = std::dynamic_pointer_cast<ReferenceType>(lvalue->getType());
-	if (refType) type = refType->getBaseType();
+	type = lvalue->type();
 	constCheck = false;
 }
 

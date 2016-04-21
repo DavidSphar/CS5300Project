@@ -24,7 +24,6 @@ public:
     static std::vector<std::string>* identList(std::vector<std::string>* list, char* ident);
     static Type* simpleType(char* text);
     static void addVariables(std::vector<std::string>* idList, Type* type);
-    static LValue* loadLValue(char* text);
     static Expression* lvalueExpression(LValue* lvalue);
     static Expression* charExpression(char c);
     static Expression* intExpression(int value);
@@ -63,11 +62,11 @@ public:
     //repeat statement
     static void repeatCheck(Expression* condition);
     //for statement
-    static LValue* setupForLoop(char*text, Expression* rhs);
-    static void forToHead(LValue* lhs, Expression* rhs);
-    static void forDowntoHead(LValue* lhs, Expression* rhs);
-    static void endForTo(LValue* lhs);
-    static void endForDownto(LValue* lhs);
+    static char* setupForLoop(char*text, Expression* rhs);
+    static char* forToHead(char* lhs, Expression* rhs);
+    static char* forDowntoHead(char* lhs, Expression* rhs);
+    static void endForTo(char* text);
+    static void endForDownto(char* text);
 
     //function
     static std::vector<std::pair<std::string, std::shared_ptr<Type>>>* parameter(int ref, std::vector<std::string>* identList, Type* type);
@@ -78,6 +77,18 @@ public:
     static void endFunction();
     static Expression* functionCall(char*name, std::vector<Expression*>* expressionList);
     static void functionReturn(Expression* expression);
+
+    //array and record
+    static Type* recordType(std::vector<std::pair<std::string, std::shared_ptr<Type>>>* fields);
+    static std::vector<std::pair<std::string, std::shared_ptr<Type>>>* fieldList(std::vector<std::pair<std::string, std::shared_ptr<Type>>>* finalList, std::vector<std::pair<std::string, std::shared_ptr<Type>>>* list);
+    static std::vector<std::pair<std::string, std::shared_ptr<Type>>>* field(std::vector<std::string>* identList, Type* type);
+    static Type* arrayType(Expression* lowExpr, Expression* highExpr, Type* type);
+    static void addType(char* text, Type* type);
+    static LValue* loadMember(LValue* recordLvalue, char* memberText);
+    static LValue* loadArray(LValue* arrayLvalue, Expression* indexExpression);
+    static LValue* loadId(char* text);
+    static void copy(std::string sourceReg, std::string destReg, std::shared_ptr<Type> type);
+    static void copy(std::string sourceReg, std::string destReg, int index, std::shared_ptr<Type> type);
 private:
 	static std::shared_ptr<SymbolTable> symbolTable;
 	static std::shared_ptr<SymbolTable> getPredefinedTable();

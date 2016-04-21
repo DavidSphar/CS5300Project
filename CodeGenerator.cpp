@@ -79,7 +79,19 @@ void CodeGenerator::addVariables(std::vector<std::string>* idList, Type* type) {
 		yyerror("ERROR: Empty type");
 		return;
 	}
-	if (type == nullptr) return;
+	if (type->name().length() < 1) { //new array or record type
+		if (dynamic_cast<ArrayType*>(type)) {
+			auto arrayType = dynamic_cast<ArrayType*>(type);
+			arrayType->setName("_TempArrayType");
+			auto arrayTypeSharedPtr = make_shared<ArrayType>(*arrayType);
+			getSymbolTable()->addType(arrayTypeSharedPtr->name(), arrayTypeSharedPtr);
+		} else if (dynamic_cast<RecordType*>(type)) {
+			auto recordType = dynamic_cast<RecordType*>(type);
+			recordType->setName("_TempRecordType");
+			auto recordTypeSharedPtr = make_shared<RecordType>(*recordType);
+			getSymbolTable()->addType(recordTypeSharedPtr->name(), recordTypeSharedPtr);
+		}
+	}
 	auto identType = getSymbolTable()->lookupType(type->name());
 	for (const auto& ident: *idList) {
 		getSymbolTable()->addVariable(ident, identType);
@@ -92,22 +104,6 @@ void CodeGenerator::addVariables(std::vector<std::string>* idList, Type* type) {
 	delete idList;
 }
 
-LValue* CodeGenerator::loadLValue(char* text) {
-	auto constant = getSymbolTable()->lookupConstant(text);
-	if (constant != nullptr) {
-		auto lvalue = new LValue(constant->getType(), constant);
-		return lvalue;
-	}
-	auto variable = getSymbolTable()->lookupVariable(text);
-	if (variable != nullptr) {
-		// cout << *variable << endl;
-		auto lvalue = new LValue(variable->getType(), variable->getMemoryLocation(), variable->getMemoryOffset());
-		return lvalue;
-	}
-	yyerror("ERROR: Cannot find identifier");
-	return nullptr;
-}
-
 
 Expression* CodeGenerator::lvalueExpression(LValue* lvalue) {
 	if (lvalue == nullptr) {
@@ -115,17 +111,15 @@ Expression* CodeGenerator::lvalueExpression(LValue* lvalue) {
 		return nullptr;
 	}
 	if (lvalue->isConst()) {
-		auto expression = new Expression(lvalue->getType(), lvalue->getConstEx()->getValue());
+		auto expression = new Expression(lvalue->type(), lvalue->value()->getValue());
+		delete lvalue;
 		return expression;
 	} else {
-		auto lvalueSharedPtr = make_shared<LValue>(lvalue->getType(), lvalue->getMemoryLocation(), lvalue->getMemoryOffset());
-		auto expression = new Expression(lvalueSharedPtr);
-		if (lvalueSharedPtr->isRef()) { // if lvalue if reference
-			auto tempReg = Register::allocate();
-			fout << "\t" << "lw " << tempReg->getName() << ", " << lvalue->getAddress() << endl;
-			fout << "\t" << "lw " << expression->getRegister() << ", " << "0(" << tempReg->getName() << ")" << endl;
+		auto expression = new Expression(shared_ptr<LValue>(lvalue));
+		if (dynamic_pointer_cast<BuiltIn>(lvalue->type())) {
+			fout << "\t" << "lw " << expression->getRegister() << ", 0(" << lvalue->address()->getRegister() << ")" << endl;
 		} else {
-			fout << "\t" << "lw " << expression->getRegister() << ", " << lvalue->getAddress() << endl;
+			fout << "\t" << "move " << expression->getRegister() << ", " << lvalue->address()->getRegister() << endl;
 		}
 		return expression;
 	}
@@ -386,41 +380,45 @@ void CodeGenerator::assignment(LValue* lvalue, Expression* expression) {
 		yyerror("ERROR: Cannot assign to a constant");
 		return;
 	}
-	if (!lvalue->isRef()) {
-		if (lvalue->getType() != expression->getType()) {
-			yyerror("ERROR: lhs and rhs must has same type");
-			return;
-		}
-	}
 
-	if (expression->isConst()) {
-		auto tempReg = Register::allocate();
-		if (expression->isString()) { // if string, load address
-			fout << "\t" << "la " << tempReg->getName() << ", STR" << expression->getValue() << endl;
+	if (dynamic_pointer_cast<BuiltIn>(lvalue->type())) {
+		if (expression->isConst()) {
+			auto tempReg = Register::allocate();
+			if (expression->isString()) { // if string, load address
+				fout << "\t" << "la " << tempReg->getName() << ", STR" << expression->getValue() << endl;
+			} else {
+				fout << "\t" << "li " << tempReg->getName() << ", " << expression->getValue() << endl;
+			}
+			fout << "\t" << "sw " << tempReg->getName() << ", 0(" << lvalue->address()->getRegister() << ")" << endl;
 		} else {
-			fout << "\t" << "li " << tempReg->getName() << ", " << expression->getValue() << endl;
+			fout << "\t" << "sw " << expression->getRegister() << ", 0(" << lvalue->address()->getRegister() << ")" << endl;
 		}
-
-		if (lvalue->isRef()) { // if lhs is reference
-			auto tempReg2 = Register::allocate();
-			fout << "\t" << "lw " << tempReg2->getName() << ", " << lvalue->getAddress() << endl;
-			fout << "\t" << "sw " << tempReg->getName() << ", " << "0(" << tempReg2->getName() << ")" << endl;
-		} else {
-			fout << "\t" << "sw " << tempReg->getName() << ", " << lvalue->getAddress() << endl;
-		}
-
 	} else {
-		if (lvalue->isRef()) { // if lhs is reference
-			auto tempReg2 = Register::allocate();
-			fout << "\t" << "lw " << tempReg2->getName() << ", " << lvalue->getAddress() << endl;
-			fout << "\t" << "sw " << expression->getRegister() << ", " << "0(" << tempReg2->getName() << ")" << endl;
-		} else {
-			fout << "\t" << "sw " << expression->getRegister() << ", " << lvalue->getAddress() << endl;
-		}
+		CodeGenerator::copy(expression->getRegister(), lvalue->address()->getRegister(), lvalue->type());
 	}
 	delete expression; // delete expression after done
 	delete lvalue; // delete lvalue after done
 
+}
+
+void CodeGenerator::copy(std::string sourceReg, std::string destReg, std::shared_ptr<Type> type) {
+	auto tempReg =  Register::allocate();
+	auto i = 0;
+	while (i < type->size()) {
+		fout << "\t" << "lw " << tempReg->getName() << ", " << i << "(" << sourceReg << ")" << endl;
+		fout << "\t" << "sw " << tempReg->getName() << ", " << i << "(" << destReg << ")" << endl;
+		i += 4;
+	}
+}
+
+void CodeGenerator::copy(std::string sourceReg, std::string destReg, int index, std::shared_ptr<Type> type) {
+	auto tempReg = Register::allocate();
+	auto i = 0;
+	while (i < type->size()) {
+		fout << "\t" << "lw " << tempReg->getName() << ", " << i << "(" << sourceReg << ")" << endl;
+		fout << "\t" << "sw " << tempReg->getName() << ", " << i+index << "(" << destReg << ")" << endl;
+		i += 4;
+	}
 }
 
 void CodeGenerator::stop() {
@@ -438,26 +436,14 @@ void CodeGenerator::read(std::vector<LValue*>* list) {
 			yyerror("ERROR: Cannot read value to a constant");
 			return;
 		} else {
-			if (lvalue->getType() == BuiltInType::getInt()) {
+			if (lvalue->type() == BuiltInType::getInt()) {
 				fout << "\t" << "li $v0, 5" << endl;
 				fout << "\t" << "syscall" << endl;
-				if (lvalue->isRef()) { // if lvalue is reference
-					auto tempReg = Register::allocate();
-					fout << "\t" << "lw " << tempReg->getName() << ", " << lvalue->getAddress() << endl;
-					fout << "\t" << "sw $v0, " << "0(" << tempReg->getName() << ")" << endl;
-				} else {
-					fout << "\t" << "sw $v0, " << lvalue->getAddress() << endl;
-				}
-			} else if (lvalue->getType() == BuiltInType::getChar()) {
+				fout << "\t" << "sw $v0, 0(" << lvalue->address()->getRegister() << ")" << endl;
+			} else if (lvalue->type() == BuiltInType::getChar()) {
 				fout << "\t" << "li $v0, 12" << endl;
 				fout << "\t" << "syscall" << endl;
-				if (lvalue->isRef()) { // if lvalue is reference
-					auto tempReg = Register::allocate();
-					fout << "\t" << "lw " << tempReg->getName() << ", " << lvalue->getAddress() << endl;
-					fout << "\t" << "sw $v0, " << "0(" << tempReg->getName() << ")" << endl;
-				} else {
-					fout << "\t" << "sw $v0, " << lvalue->getAddress() << endl;
-				}
+				fout << "\t" << "sw $v0, 0(" << lvalue->address()->getRegister() << ")" << endl;
 			} else {
 				yyerror("ERROR: Only read integer and character");
 			}
@@ -633,7 +619,7 @@ void CodeGenerator::repeatCheck(Expression* condition) {
 	delete condition;
 }
 
-LValue* CodeGenerator::setupForLoop(char* text, Expression* rhs) {
+char* CodeGenerator::setupForLoop(char* text, Expression* rhs) {
 	// make new scope to introduce the new variable in the for loop
 	auto newST = make_shared<SymbolTable>(getSymbolTable(), getSymbolTable()->getMemoryLocation());
 	newST->setMemoryOffset(getSymbolTable()->getMemoryOffset());
@@ -642,28 +628,34 @@ LValue* CodeGenerator::setupForLoop(char* text, Expression* rhs) {
 	if (symbolTable->getMemoryLocation() == STACK) {
 		fout << "\t" << "addi $sp, $sp, -4" << endl;
 	}
-	auto lhs = loadLValue(text);
+	auto lhs = loadId(text);
 	assignment(lhs, rhs); // delete parameters
 	newLoop();
-	return loadLValue(text);
+	return text;
 }
 
-void CodeGenerator::forToHead(LValue* lhs, Expression* rhs) {
+char* CodeGenerator::forToHead(char* text, Expression* rhs) {
+	auto lhs = loadId(text);
 	auto lhsExpression = lvalueExpression(lhs);
 	auto resultExpression = eval(lhsExpression, rhs, "sgt");
 	loopCheck(resultExpression, false);
+	return text;
 }
 
-void CodeGenerator::forDowntoHead(LValue* lhs, Expression* rhs) {
+char* CodeGenerator::forDowntoHead(char* text, Expression* rhs) {
+	auto lhs = loadId(text);
 	auto lhsExpression = lvalueExpression(lhs);
 	auto resultExpression = eval(lhsExpression, rhs, "slt");
 	loopCheck(resultExpression, false);
+	return text;
 }
 
-void CodeGenerator::endForTo(LValue* lhs) {
+void CodeGenerator::endForTo(char* text) {
+	auto lhs = loadId(text);
 	auto lhsExpression = lvalueExpression(lhs);
 	auto rhsExpression = new Expression(BuiltInType::getInt(), 1);
 	auto rhs = eval(lhsExpression, rhsExpression, "add");
+	lhs = loadId(text);
 	assignment(lhs, rhs);
 	endLoop();
 	symbolTable = symbolTable->getParent(); //clear the new variable introduced in the for loop
@@ -672,10 +664,12 @@ void CodeGenerator::endForTo(LValue* lhs) {
 	}
 }
 
-void CodeGenerator::endForDownto(LValue* lhs) {
+void CodeGenerator::endForDownto(char* text) {
+	auto lhs = loadId(text);
 	auto lhsExpression = lvalueExpression(lhs);
 	auto rhsExpression = new Expression(BuiltInType::getInt(), 1);
 	auto rhs = eval(lhsExpression, rhsExpression, "sub");
+	lhs = loadId(text);
 	assignment(lhs, rhs);
 	endLoop();
 	symbolTable = symbolTable->getParent(); //clear the new variable introduced in the for loop
@@ -791,21 +785,20 @@ Expression* CodeGenerator::functionCall(char*name, std::vector<Expression*>* exp
 					return nullptr;
 				}
 				auto lvalue = (*expressionList)[i]->getLValue();
-				auto tempReg = Register::allocate();
-				if (lvalue->isRef()) {
-					fout << "\t" << "lw " << tempReg->getName() << ", " << lvalue->getAddress() << endl;
-				} else {
-					fout << "\t" << "la " << tempReg->getName() << ", " << lvalue->getAddress() << endl;
-				}
-				fout << "\t" << "sw " << tempReg->getName() << ", " << index << "($sp)" << endl;
+				fout << "\t" << "sw " << lvalue->address()->getRegister() << ", " << index << "($sp)" << endl;
 			} else { // pass by value
-				auto tempReg = Register::allocate();
-				if ((*expressionList)[i]->isConst()) {
-					fout << "\t" << "li " << tempReg->getName() << ", " << (*expressionList)[i]->getValue() << endl;
+				if (dynamic_pointer_cast<BuiltIn>((*expressionList)[i]->getType())) { // built in type
+					auto tempReg = Register::allocate();
+					if ((*expressionList)[i]->isConst()) {
+						fout << "\t" << "li " << tempReg->getName() << ", " << (*expressionList)[i]->getValue() << endl;
+					} else {
+						fout << "\t" << "move " << tempReg->getName() << ", " << (*expressionList)[i]->getRegister() << endl;
+					}
+					fout << "\t" << "sw " << tempReg->getName() << ", " << index << "($sp)" << endl;
 				} else {
-					fout << "\t" << "move " << tempReg->getName() << ", " << (*expressionList)[i]->getRegister() << endl;
+					CodeGenerator::copy((*expressionList)[i]->getLValue()->address()->getRegister(), "$sp", index, (*expressionList)[i]->getType());
 				}
-				fout << "\t" << "sw " << tempReg->getName() << ", " << index << "($sp)" << endl;
+
 			}
 			index += function->getArgs()[i].second->size();
 		}
@@ -854,22 +847,113 @@ void CodeGenerator::functionReturn(Expression* expression) {
 		fout << "\t" << "jr $ra" << endl;
 		return;
 	}
-
-	if (expression->isConst()) { // expression is a constant, string <> (int, char, bool)
-		if (expression->isString()) {
-			fout << "\t" << "la $v0, STR" << expression->getValue() << endl;
-		} else {
-			fout << "\t" << "li $v0, " << expression->getValue() << endl;
+	if (dynamic_pointer_cast<BuiltIn>(expression->getType())) {
+		if (expression->isConst()) { // expression is a constant, string <> (int, char, bool)
+			if (expression->isString()) {
+				fout << "\t" << "la $v0, STR" << expression->getValue() << endl;
+			} else {
+				fout << "\t" << "li $v0, " << expression->getValue() << endl;
+			}
+			fout << "\t" << "move $sp, $fp" << endl;
+			fout << "\t" << "jr $ra" << endl;
+			delete expression;
+			return;
+		} else { // expression is not a constant, move value of expression to $v0
+			fout << "\t" << "move $v0, " << expression->getRegister() << endl;
+			fout << "\t" << "move $sp, $fp" << endl;
+			fout << "\t" << "jr $ra" << endl;
+			delete expression;
+			return;
 		}
+	} else {
+		string retValName = "__" + expression->getType()->name();
+		auto retLvalue = new IdAccess(retValName, getSymbolTable());
+		assignment(retLvalue, expression);
+		retLvalue = new IdAccess(retValName, getSymbolTable());
+		fout << "\t" << "move $v0, " << retLvalue->address()->getRegister() << endl;
 		fout << "\t" << "move $sp, $fp" << endl;
 		fout << "\t" << "jr $ra" << endl;
-		delete expression;
-		return;
-	} else { // expression is not a constant, move value of expression to $v0
-		fout << "\t" << "move $v0, " << expression->getRegister() << endl;
-		fout << "\t" << "move $sp, $fp" << endl;
-		fout << "\t" << "jr $ra" << endl;
-		delete expression;
+		delete retLvalue;
 		return;
 	}
 }
+
+Type* CodeGenerator::recordType(std::vector<std::pair<std::string, std::shared_ptr<Type>>>* fields) {
+	auto record = new RecordType();
+	for (auto& elem: *fields) {
+		record->addField(elem.first, elem.second);
+	}
+	delete fields;
+	return record;
+}
+
+std::vector<std::pair<std::string, std::shared_ptr<Type>>>* CodeGenerator::fieldList(std::vector<std::pair<std::string, std::shared_ptr<Type>>>* finalList, std::vector<std::pair<std::string, std::shared_ptr<Type>>>* list) {
+	if (finalList == nullptr) return list;
+	for (auto& elem: *list) {
+		finalList->push_back(elem);
+	}
+	delete list;
+	return finalList;
+}
+
+std::vector<std::pair<std::string, std::shared_ptr<Type>>>* CodeGenerator::field(std::vector<std::string>* identList, Type* type) {
+	auto result = new vector<pair<string, shared_ptr<Type>>>();
+	auto typeSharedPtr = CodeGenerator::getSymbolTable()->lookupType(type->name());
+	for (auto& elem: *identList) {
+		result->push_back(std::make_pair(elem, typeSharedPtr));
+	}
+	return result;
+}
+
+Type* CodeGenerator::arrayType(Expression* lowExpr, Expression* highExpr, Type* type) {
+	if ((!lowExpr->isConst())||(!highExpr->isConst())) {
+		yyerror("Error in array declaration");
+		return nullptr;
+	}
+	auto lower = lowExpr->getValue();
+	auto upper = highExpr->getValue();
+	auto typeSharedPtr = CodeGenerator::getSymbolTable()->lookupType(type->name());
+	return new ArrayType(lower, upper, typeSharedPtr);
+}
+
+void CodeGenerator::addType(char* text, Type* type) {
+	if (dynamic_cast<ArrayType*>(type)) {
+		auto arrayType = dynamic_cast<ArrayType*>(type);
+		auto arrayTypeSharedPtr = make_shared<ArrayType>(*arrayType);
+		arrayTypeSharedPtr->setName(string(text));
+		getSymbolTable()->addType(string(text), arrayTypeSharedPtr);
+		if(getSymbolTable()->getMemoryLocation() == GLOBAL) {
+			auto arrayTypeRetId = "__" + arrayTypeSharedPtr->name();
+			getSymbolTable()->addVariable(arrayTypeRetId, arrayTypeSharedPtr);
+		}
+		return;
+	} else if (dynamic_cast<RecordType*>(type)) {
+		auto recordType = dynamic_cast<RecordType*>(type);
+		auto recordTypeSharedPtr = make_shared<RecordType>(*recordType);
+		recordTypeSharedPtr->setName(string(text));
+		getSymbolTable()->addType(string(text), recordTypeSharedPtr);
+		if(getSymbolTable()->getMemoryLocation() == GLOBAL) {
+			auto arrayTypeRetId = "__" + recordTypeSharedPtr->name();
+			getSymbolTable()->addVariable(arrayTypeRetId, recordTypeSharedPtr);
+		}
+		return;
+	} else {
+		auto builtInType = getSymbolTable()->lookupType(type->name());
+		getSymbolTable()->addType(string(text), builtInType);
+	}
+}
+
+
+LValue* CodeGenerator::loadMember(LValue* recordLvalue, char* memberText) {
+	return new MemberAccess(shared_ptr<LValue>(recordLvalue), string(memberText), getSymbolTable());
+}
+
+LValue* CodeGenerator::loadArray(LValue* arrayLvalue, Expression* indexExpression) {
+	return new ArrayAccess(shared_ptr<LValue>(arrayLvalue), shared_ptr<Expression>(indexExpression), getSymbolTable());
+}
+
+LValue* CodeGenerator::loadId(char* text) {
+	return new IdAccess(string(text), getSymbolTable());
+}
+
+

@@ -20,15 +20,20 @@ public:
 	virtual ~Type() = default;
 };
 
+class BuiltIn: public Type {
+	virtual int size() = 0;
+	virtual std::string name() = 0;
+};
+
 // integer
-class IntType : public Type {
+class IntType : public BuiltIn {
 public:
 	int size() { return 4; }
 	std::string name() { return "integer"; }
 };
 
 // character
-class CharType: public Type {
+class CharType: public BuiltIn {
 public:
 	int size() { return 4; }
 	std::string name() { return "char"; }
@@ -36,14 +41,14 @@ public:
 
 
 // boolean
-class BoolType: public Type {
+class BoolType: public BuiltIn {
 public:
 	int size() { return 4; }
 	std::string name() { return "boolean"; }
 };
 
 // string
-class StringType: public Type {
+class StringType: public BuiltIn {
 public:
 	int size() { return 4; }
 	std::string name() { return "string"; }
@@ -64,14 +69,16 @@ private:
 };
 
 class ArrayType : public Type {
-private:
+public:
 	ArrayType(int lower, int upper, std::shared_ptr<Type> type): Type(), lowerBound(lower), upperBound(upper), baseType(type) {}
 	int size() { return (upperBound - lowerBound + 1) * baseType->size(); }
-	std::string name() { return "array"; }
+	std::string name() { return typeName; }
+	void setName(std::string text) { typeName = text; }
 	int getLowerBound() const { return lowerBound; }
 	int getUpperBound() const { return upperBound; }
 	std::shared_ptr<Type> getBaseType() const { return baseType; }
 private:
+	std::string typeName;
 	int lowerBound;
 	int upperBound;
 	std::shared_ptr<Type> baseType;
@@ -81,11 +88,13 @@ class RecordType: public Type {
 public:
 	RecordType(): Type(), fieldMap(), fieldOffsetMap(), currentOffset(0) {}
 	int size();
-	std::string name() { return "record"; }
+	std::string name() { return typeName; }
+	void setName(std::string text) { typeName = text; }
 	void addField(std::string fieldName, std::shared_ptr<Type> fieldType);
 	std::shared_ptr<Type> getFieldType(std::string fieldName) const;
 	int getFieldOffset(std::string fieldName) const;
 private:
+	std::string typeName;
 	std::map<std::string, std::shared_ptr<Type>> fieldMap;
 	std::map<std::string, int> fieldOffsetMap;
 	int currentOffset;

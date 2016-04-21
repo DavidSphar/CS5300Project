@@ -8,38 +8,58 @@
 #ifndef LVALUE_H_
 #define LVALUE_H_
 #include "Symbol.h"
+#include "SymbolTable.h"
 #include <memory>
 
 class LValue {
 public:
-	LValue(std::shared_ptr<Type> type, MemoryLocation memoryLocation, int memoryOffset): type(type), memoryLocation(memoryLocation), memoryOffset(memoryOffset) {}
-	LValue(std::shared_ptr<Type> type, std::shared_ptr<Expression> constEx): type(type), constEx(constEx) { constCheck = true; }
-	~LValue() = default;
-	MemoryLocation getMemoryLocation() { return memoryLocation; }
-	int getMemoryOffset() { return memoryOffset; }
-	std::shared_ptr<Type> getType() { return type; }
-	std::shared_ptr<Expression> getConstEx() const { return constEx; }
-	bool isConst() const { return constCheck; }
-	std::string getAddress() {
-		if (memoryLocation == GLOBAL) {
-			return std::to_string(memoryOffset)+"($gp)";
-		}
-		if (memoryLocation == STACK) {
-			auto finalOffset = memoryOffset + getType()->size();
-			return "-" + std::to_string(finalOffset) + "($fp)";
-		}
-		if (memoryLocation == FRAME) {
-			return std::to_string(memoryOffset)+"($fp)";
-		}
-		return "";
-	}
-	bool isRef() const { return std::dynamic_pointer_cast<ReferenceType>(type) != nullptr; }
-private:
-	std::shared_ptr<Type> type;
-	MemoryLocation memoryLocation = GLOBAL;
-	int memoryOffset = 0;
-	std::shared_ptr<Expression> constEx;
-	bool constCheck = false;
+	LValue(std::shared_ptr<SymbolTable> t): symbolTable(t) {}
+	virtual ~LValue() = default;
+	virtual std::shared_ptr<Expression> address() const = 0;
+	virtual std::shared_ptr<Type> type() const = 0;
+	virtual bool isConst() const = 0;
+	virtual std::shared_ptr<Expression> value() const = 0;
+protected:
+	std::shared_ptr<SymbolTable> symbolTable;
 };
+
+class IdAccess: public LValue {
+public:
+	IdAccess(std::string n, std::shared_ptr<SymbolTable> t): LValue(t), id(n) { }
+	std::shared_ptr<Type> type() const;
+	std::shared_ptr<Expression> address() const;
+	bool isConst() const;
+	std::shared_ptr<Expression> value() const;
+private:
+	std::string id;
+};
+
+class MemberAccess: public LValue {
+public:
+	MemberAccess(std::shared_ptr<LValue> base, std::string field, std::shared_ptr<SymbolTable> t): LValue(t), base(base), field(field) { }
+	std::shared_ptr<RecordType> btype() const;
+	std::shared_ptr<Type> type() const;
+	std::shared_ptr<Expression> address() const;
+	bool isConst() const;
+	std::shared_ptr<Expression> value() const;
+private:
+	std::shared_ptr<LValue> base;
+	std::string field;
+};
+
+
+class ArrayAccess: public LValue {
+public:
+	ArrayAccess(std::shared_ptr<LValue> base, std::shared_ptr<Expression> e, std::shared_ptr<SymbolTable> t): LValue(t), base(base), expr(e) { }
+	std::shared_ptr<Expression> address() const;
+	std::shared_ptr<ArrayType> atype() const;
+	std::shared_ptr<Type> type() const;
+	bool isConst() const;
+	std::shared_ptr<Expression> value() const;
+private:
+	std::shared_ptr<LValue> base;
+	std::shared_ptr<Expression> expr;
+};
+
 
 #endif /* LVALUE_H_ */

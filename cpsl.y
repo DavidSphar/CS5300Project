@@ -113,14 +113,14 @@ ofstream fout;
 
 %type <intVal> INTEGER AllVar
 %type <charVal> CHARACTER
-%type <strVal> STRING IDENTIFIER
+%type <strVal> STRING IDENTIFIER ForStart ForToHead ForDowntoHead 
 %type <identList> IdentList
 %type <exprList> WriteArgs AllArguments Arguments
 %type <lvalueList> ReadArgs
 %type <expr> Expression FunctionCall ProcedureCall
-%type <typeVal> Type SimpleType
-%type <lvalue> LValue ForStart ForToHead ForDowntoHead 
-%type <paramList> FormalParameter FormalParameters AllFormalParameters
+%type <typeVal> Type SimpleType RecordType ArrayType
+%type <lvalue> LValue
+%type <paramList> FormalParameter FormalParameters AllFormalParameters FieldDecls FieldDecl
 
 %%
 
@@ -194,32 +194,32 @@ TypeDecls : TypeDecls TypeDecl
 		  | TypeDecl
 		  ;
 
-TypeDecl : IDENTIFIER EQ Type SEMICOLON
+TypeDecl : IDENTIFIER EQ Type SEMICOLON { CodeGenerator::addType($1, $3); }
 		 ;
 
 Type : SimpleType { $$ = $1; }
-	 | RecordType
-	 | ArrayType
+	 | RecordType { $$ = $1; }
+	 | ArrayType { $$ = $1; }
 	 ;
 
 SimpleType : IDENTIFIER { $$ = CodeGenerator::simpleType($1); }
 		   ;
 
-RecordType : RECORD FieldDecls END
+RecordType : RECORD FieldDecls END { $$ = CodeGenerator::recordType($2); }
 		   ;
 
-FieldDecls : FieldDecls FieldDecl
-		   |
+FieldDecls : FieldDecls FieldDecl { $$ = CodeGenerator::fieldList($1, $2); }
+		   | { $$ = nullptr; } 
 		   ;
 
-FieldDecl : IdentList COLON Type SEMICOLON
+FieldDecl : IdentList COLON Type SEMICOLON { $$ = CodeGenerator::field($1, $3); }
 		  ;
 
 IdentList : IdentList COMMA IDENTIFIER { $$ = CodeGenerator::identList($1, $3); }
 		  | IDENTIFIER { $$ = CodeGenerator::identList(nullptr, $1); }
 		  ;
 
-ArrayType : ARRAY LBRACKET Expression COLON Expression RBRACKET OF Type
+ArrayType : ARRAY LBRACKET Expression COLON Expression RBRACKET OF Type { $$ = CodeGenerator::arrayType($3, $5, $8); }
 		  ;
 
 AllVarDecls : VAR VarDecls
@@ -298,10 +298,10 @@ ForToStatement : ForToHead DO StatementSequence END { CodeGenerator::endForTo($1
 ForDowntoStatement : ForDowntoHead DO StatementSequence END { CodeGenerator::endForDownto($1); }
 				   ;
 
-ForToHead : ForStart TO Expression { CodeGenerator::forToHead($1, $3); $$ = $1; }
+ForToHead : ForStart TO Expression { $$ = CodeGenerator::forToHead($1, $3); }
 		  ;
 
-ForDowntoHead : ForStart DOWNTO Expression { CodeGenerator::forDowntoHead($1,$3); $$ = $1; }
+ForDowntoHead : ForStart DOWNTO Expression { $$ = CodeGenerator::forDowntoHead($1,$3); }
 			  ;
 
 ForStart : FOR IDENTIFIER ASSIGN Expression { $$ = CodeGenerator::setupForLoop($2, $4); }
@@ -371,9 +371,9 @@ Expression : CHARACTER { $$ = CodeGenerator::charExpression($1); }
 FunctionCall : IDENTIFIER LPAREN AllArguments RPAREN { $$ = CodeGenerator::functionCall($1, $3); }
 			 ;
 
-LValue : LValue DOT IDENTIFIER
-	   | LValue LBRACKET Expression RBRACKET
-	   | IDENTIFIER { $$ = CodeGenerator::loadLValue($1); }
+LValue : LValue DOT IDENTIFIER { $$ = CodeGenerator::loadMember($1, $3); }
+	   | LValue LBRACKET Expression RBRACKET { $$ = CodeGenerator::loadArray($1, $3); }
+	   | IDENTIFIER { $$ = CodeGenerator::loadId($1); }
 	   ;
 
 %%

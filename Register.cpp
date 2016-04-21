@@ -6,7 +6,8 @@
  */
 
 #include "Register.h"
-
+#include <iostream>
+extern void yyerror(const char *msg);
 
 using namespace std;
 
@@ -22,7 +23,10 @@ void Register::init() {
 
 
 unique_ptr<Register> Register::allocate() {
-	if (pool.empty()) return nullptr;
+	if (pool.empty()) {
+		yyerror("Running out of registers");
+		return nullptr;
+	}
 	auto registerName = pool.back();
 	pool.pop_back();
 	used.insert(registerName); // used
